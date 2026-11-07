@@ -47,8 +47,8 @@ def patch_settings_cs(src: str) -> str:
                        "public partial class PKHeXSettings : ContentPage\n{\n    private bool _initializingPKHaX = true;\n",
                        "Settings class")
     src = replace_once(src,
-                       "        InitializeComponent();\n\n        var prop = new propertyGrid(new PSettings());",
-                       "        InitializeComponent();\n        _initializingPKHaX = true;\n        PKHaXSwitch.IsToggled = ExpansionSettings.PKHaXMode;\n        _initializingPKHaX = false;\n\n        var prop = new propertyGrid(new PSettings());",
+                       "InitializeComponent();",
+                       "InitializeComponent();\n        _initializingPKHaX = true;\n        PKHaXSwitch.IsToggled = ExpansionSettings.PKHaXMode;\n        _initializingPKHaX = false;",
                        "Initialize PKHaX switch")
     key = "    private void applynewsave(object sender, EventArgs e)\n"
     on_changed = """    private async void OnPKHaXToggled(object sender, ToggledEventArgs e)
