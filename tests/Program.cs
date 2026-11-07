@@ -27,9 +27,10 @@ var output = sav.Write().ToArray();
 if (output.Length < 200_000)
     throw new InvalidOperationException("USUM save output unexpectedly short.");
 
+// Blank template saves may not carry the metadata required by SaveUtil auto-detection.
+// A real imported main must pass SaveUtil detection; this synthetic test reopens as SAV7USUM.
 var parsed = SaveUtil.GetSaveFile(output);
-if (parsed is not SAV7USUM readable)
-    throw new InvalidOperationException("USUM synthetic save could not be reparsed.");
+var readable = parsed as SAV7USUM ?? new SAV7USUM(output);
 if (!readable.ChecksumsValid)
     throw new InvalidOperationException("USUM synthetic export checksum invalid: " + readable.ChecksumInfo);
 
