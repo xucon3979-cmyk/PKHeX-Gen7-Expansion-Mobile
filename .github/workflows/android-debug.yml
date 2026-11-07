@@ -1,0 +1,46 @@
+name: Build Android Debug APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+      - name: Extract source package (when ZIP is uploaded)
+        shell: pwsh
+        run: |
+          if (Test-Path 'PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip') {
+            Expand-Archive -Path 'PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip' -DestinationPath '.source' -Force
+            Copy-Item -Path '.source/PKHeX-Gen7Expansion-Mobile/*' -Destination '.' -Recurse -Force
+          }
+          if (-not (Test-Path 'PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj')) {
+            throw 'Missing source: upload PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip at repository root.'
+          }
+      - name: Get Aqua-0 PKHeX Core v1.0
+        uses: actions/checkout@v4
+        with:
+          repository: Aqua-0/PKHeX
+          ref: v1.0
+          path: Upstream/PKHeX
+          persist-credentials: false
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install Android workload
+        shell: pwsh
+        run: dotnet workload restore PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj
+      - name: Build APK
+        shell: pwsh
+        run: dotnet build PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj -c Debug -f net10.0-android -p:AndroidPackageFormats=apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PKHeX-Gen7-Expansion-Android-debug
+          path: PKHeXExpansion.Mobile/bin/Debug/net10.0-android/**/*.apk
+          if-no-files-found: error
