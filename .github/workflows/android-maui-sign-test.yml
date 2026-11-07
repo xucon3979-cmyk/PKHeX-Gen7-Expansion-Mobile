@@ -1,0 +1,84 @@
+name: Sign and smoke-test PKHeX.MAUI Gen7 Expansion APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-maui-sign-test.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Download APK from original UI + Expansion Core successful build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p apk-from-build
+          gh run download 42360621842 -R ${{ github.repository }} -n PKHeX-MAUI-OriginalUI-Gen7Expansion-Debug-APK -D apk-from-build
+          echo 'Files in APK artifact:'
+          find apk-from-build -type f -maxdepth 5 -printf '%p (%s bytes)\n'
+          find apk-from-build -type f -iname '*.apk' | grep -q .
+
+      - name: Create independently signed, installable APK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          ZIPALIGN="$(find "$SDK/build-tools" -type f -name zipalign | sort -V | tail -1)"
+          INPUT="$(find apk-from-build -type f -iname '*.apk' -print -quit)"
+          test -f "$APKSIGNER"
+          test -f "$ZIPALIGN"
+          test -f "$INPUT"
+          "$ZIPALIGN" -p -f 4 "$INPUT" ./aligned.apk
+          keytool -genkeypair -noprompt -keystore ./ci-debug.keystore -alias androiddebugkey -storepass android -keypass android -dname "CN=PKHeX Gen7 Expansion Mobile,O=Debug,C=US" -keyalg RSA -keysize 2048 -validity 10000
+          "$APKSIGNER" sign --ks ./ci-debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk ./aligned.apk
+          "$APKSIGNER" verify --verbose ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk
+          ls -lh ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk
+          sha256sum ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk
+
+      - name: Publish APK ready for installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: PKHeX-MAUI-Gen7Expansion-OriginalUI-Installable-APK
+          path: ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enable KVM for emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+
+      - name: Install signed APK and verify startup
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install ./PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk
+            adb logcat -c
+            adb shell monkey -p org.pkhex.gen7expansion.maui -c android.intent.category.LAUNCHER 1
+            sleep 18
+            adb logcat -d -v threadtime > ./pkhex-maui-startup.log
+            echo '=== Startup app fatal log ==='
+            grep -iE -m 60 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-startup.log || true
+            adb shell pidof org.pkhex.gen7expansion.maui || { echo 'App process exited or package mismatch'; exit 1; }
+      - name: Upload Android log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PKHeX-MAUI-Gen7Expansion-Startup-Log
+          path: ./pkhex-maui-startup.log
+          if-no-files-found: warn

@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/android-debug.yml'
+      - 'source-bundle/**'
 jobs:
   build:
     runs-on: windows-latest
