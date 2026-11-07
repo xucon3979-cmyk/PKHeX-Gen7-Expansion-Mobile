@@ -1,4 +1,23 @@
-# PKHeX Gen7 Expansion Mobile (Android)
+# PKHeX Gen7 Expansion Mobile — PKHeX.MAUI Original Interface
+
+## ✅ APK with original PKHeX.MAUI UI, sprites, and Gen7 Expansion core
+
+The new experimental full-UI build was created from the public source **santacrab2/PKHeXMAUI** (pinned commit `a6f7cfb`) with **Aqua-0/PKHeX v1.0 PKHeX.Core** replacing the original NuGet engine. It preserves the original flyout menu, Main / Met / Stats / Moves / Cosmetic Pokémon editing tabs, Box / Party, and the bundled regular / shiny / form sprites.
+
+**Installation artifact (signed APK, zipped by GitHub):** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42361719267/artifacts/13569877645
+
+**Verified:** .NET build successful; APK re-signed and signature verified; installed and opened on Android 15 x86_64 emulator; application remained running after the startup smoke test. **Not yet verified on Xiaomi 14 or with an Ultra Sun Expansion save file**.
+
+**To install:** Open the artifact link while logged in to GitHub, download the ZIP, extract `PKHeX-MAUI-Gen7Expansion-OriginalUI-Signed.apk` and open that APK on Android. The package ID is `org.pkhex.gen7expansion.maui`; it installs alongside the original app. Keep an external backup of the `main` save.
+
+**Important:** The original maintainer explicitly states that PKHeX.MAUI doesn't support ROM hacks; this is an experimental integration of an Expansion-aware core, not a guarantee of save editing safety. Some AutoMod / Injection features could still be incompatible.
+
+**Build script:** `scripts/prepare-pkhex-maui.ps1`; **original UI build workflow:** `.github/workflows/android-maui-expansion.yml`; **signed APK test workflow:** `.github/workflows/android-maui-sign-test.yml`. The signed test workflow was necessary because the default build artifact did not contain a file named `*-Signed.apk`, although a standalone APK was built successfully.
+
+---
+
+## Legacy simplified prototype (deprecated)
+
 
 An unofficial prototype using **Aqua-0/PKHeX tag v1.0 (Gen7 Expansion)** through a .NET 10 MAUI Android interface inspired by **kwsch/PKHeX.Mobile**.
 
