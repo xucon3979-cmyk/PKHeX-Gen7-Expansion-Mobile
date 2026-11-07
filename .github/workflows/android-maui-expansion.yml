@@ -1,0 +1,98 @@
+name: Build PKHeX.MAUI Gen7 Expansion (original UI)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-maui-expansion.yml'
+      - 'scripts/prepare-pkhex-maui.ps1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 70
+    steps:
+      - name: Checkout integration scripts
+        uses: actions/checkout@v4
+      - name: Checkout original PKHeX.MAUI source (same UI, 5k+ sprites)
+        uses: actions/checkout@v4
+        with:
+          repository: santacrab2/PKHeXMAUI
+          ref: a6f7cfb78e1c96155baa67660fd7ae97895e375f
+          path: PKHeXMAUI
+          persist-credentials: false
+      - name: Checkout Aqua-0 Gen7 Expansion v1.0 Core
+        uses: actions/checkout@v4
+        with:
+          repository: Aqua-0/PKHeX
+          ref: v1.0
+          path: ExpansionCore
+          persist-credentials: false
+      - name: Integrate expansion engine into full MAUI interface
+        shell: pwsh
+        run: ./scripts/prepare-pkhex-maui.ps1
+      - name: Install .NET SDK 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore Android workload
+        shell: pwsh
+        run: dotnet workload restore PKHeXMAUI/PKHeX.MAUI.csproj
+      - name: Build stand-alone Android APK
+        shell: pwsh
+        run: |
+          dotnet build PKHeXMAUI/PKHeX.MAUI.csproj -c Debug -f net10.0-android36.0 -p:AndroidPackageFormats=apk -p:EmbedAssembliesIntoApk=true -p:AndroidUseSharedRuntime=false
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: PKHeX-MAUI-OriginalUI-Gen7Expansion-Debug-APK
+          path: PKHeXMAUI/bin/Debug/net10.0-android36.0/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Download APK from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: PKHeX-MAUI-OriginalUI-Gen7Expansion-Debug-APK
+          path: ./apk
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Install and verify app remains open
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            APK="$(find ./apk -iname '*signed.apk' -print -quit)"
+            test -n "$APK"
+            adb install "$APK"
+            adb logcat -c
+            adb shell monkey -p org.pkhex.gen7expansion.maui -c android.intent.category.LAUNCHER 1
+            sleep 17
+            adb logcat -d -v threadtime > ./pkhex-maui-startup-logcat.txt
+            echo '=== Fatal events ==='
+            grep -inE 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-startup-logcat.txt | tail -60 || true
+            adb shell pidof org.pkhex.gen7expansion.maui || { echo 'Application exited shortly after launch'; exit 1; }
+      - name: Upload startup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PKHeX-MAUI-Startup-Diagnostics
+          path: ./pkhex-maui-startup-logcat.txt
+          if-no-files-found: warn
