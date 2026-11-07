@@ -61,6 +61,13 @@ jobs:
           s = project.read_text(encoding="utf-8")
           if 'PackageReference Include="Microsoft.Maui.Controls"' not in s:
               s = s.replace("</Project>", '  <ItemGroup><PackageReference Include="Microsoft.Maui.Controls" Version="10.0.110" /></ItemGroup>\n</Project>')
+          # The debug APK must include assemblies for standalone sideload installation.
+          # Otherwise MonoDroid aborts with "No assemblies found ... Fast Deployment".
+          if "<EmbedAssembliesIntoApk>" not in s:
+              s = s.replace("</PropertyGroup>",
+                  "    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>\n"
+                  "    <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>\n"
+                  "  </PropertyGroup>", 1)
           project.write_text(s, encoding="utf-8")
           print("Applied API fixes: logging, FlexLayout namespace, byte/int overload, MAUI package.")
           '@ | python -
@@ -78,9 +85,9 @@ jobs:
       - name: Restore Android workload
         shell: pwsh
         run: dotnet workload restore PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj
-      - name: Build Android Debug APK
+      - name: Build standalone Android Debug APK
         shell: pwsh
-        run: dotnet build PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj -c Debug -f net10.0-android -p:AndroidPackageFormats=apk
+        run: dotnet build PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj -c Debug -f net10.0-android -p:AndroidPackageFormats=apk -p:EmbedAssembliesIntoApk=true -p:AndroidUseSharedRuntime=false
       - name: Publish installable APK as artifact
         uses: actions/upload-artifact@v4
         if: success()
@@ -88,3 +95,45 @@ jobs:
           name: PKHeX-Gen7-Expansion-Android-Debug
           path: PKHeXExpansion.Mobile/bin/Debug/net10.0-android/**/*.apk
           if-no-files-found: error
+
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PKHeX-Gen7-Expansion-Android-Debug
+          path: ./apk
+      - name: Allow KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Install APK and verify app stays open
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install ./apk/org.pkhex.gen7expansion.mobile-Signed.apk
+            adb logcat -c
+            adb shell monkey -p org.pkhex.gen7expansion.mobile -c android.intent.category.LAUNCHER 1
+            sleep 16
+            adb logcat -d -v threadtime > ./android-startup-logcat.txt
+            echo '=== App fatal errors ==='
+            grep -inE 'FATAL EXCEPTION|No assemblies found|F monodroid|mono-rt|Fatal signal|AndroidRuntime.*[eE]xception' ./android-startup-logcat.txt | tail -50 || true
+            echo '=== Check app stays open ==='
+            adb shell pidof org.pkhex.gen7expansion.mobile
+      - name: Upload startup logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Startup-Smoke-Test-Logs
+          path: ./android-startup-logcat.txt
+          if-no-files-found: warn
