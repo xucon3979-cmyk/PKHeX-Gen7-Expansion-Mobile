@@ -1,3 +1,21 @@
+# PKHeX.MAUI Gen7 Expansion v0.7.0 — Full UI, Expansion, Safe Save, Android
+
+**Latest signed APK (ZIP artifact):** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42372147818/artifacts/13574186955
+
+**Build and verification:** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42372147818 — check that both `build` and `sign-and-smoke-test` are green before installing.
+
+## What's new
+- **v0.5:** Existing PKHaX switch with Expansion-capable species, forms, moves, abilities and items. Original Pokémon/Shiny sprites plus offline form-art fallback.
+- **v0.6:** Automatic backup of each imported save, locally stored recovery list in Settings, and checksum/round-trip verification of Ultra Sun/Moon Expansion saves before export.
+- **v0.7:** Android document-picker streaming, optional Box legality markers (off by default for faster browsing), private crash logs and a workflow that can use a persistent APK signing certificate via GitHub secrets.
+
+Read [complete changes, setup and limitations](docs/v0.7-release-notes.md).
+
+**Safety:** A Core synthetic Gen7 Expansion save test and an Android startup test are included. Editing an actual Pokémon Ultra Sun Expansion `main` has **not** yet been tested against a user-provided save. Use a copy. The workflow's temporary signing certificate cannot update an older Debug-signed installation in place.
+
+---
+## Earlier v0.4 release (archived)
+
 # PKHeX Gen7 Expansion Mobile v0.4.0 — PKHaX Settings
 
 **Download the tested signed Android APK (ZIP artifact):**
