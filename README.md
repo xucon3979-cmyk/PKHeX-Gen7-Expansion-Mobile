@@ -1,21 +1,48 @@
-# PKHeX Gen7 Expansion Mobile — Android
+# PKHeX Gen7 Expansion Mobile (Android)
 
-Dự án cộng đồng (không chính thức): chuyển chức năng PKHeX.Mobile sang .NET MAUI và dùng **Aqua-0/PKHeX v1.0 PKHeX.Core** để hỗ trợ save Pokémon Ultra Sun/Ultra Moon Expansion.
+An unofficial prototype using **Aqua-0/PKHeX tag v1.0 (Gen7 Expansion)** through a .NET 10 MAUI Android interface inspired by **kwsch/PKHeX.Mobile**.
 
-**Trạng thái:** prototype 0.1.0. Mã nguồn và APK **chưa được chứng nhận hoạt động**; GitHub Actions phải build thành công trước khi APK xuất hiện. Không dùng với save gốc nếu chưa sao lưu.
+## ✅ Android Debug APK built successfully
 
-## Cách tải APK
+**Verified successful GitHub Actions run:** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42356622710
 
-Mở tab **Actions** > **Build Android Debug APK** > chọn một run thành công > **Artifacts** > tải `pkhex-gen7-expansion-debug-apk`. Giải nén artifact để lấy `.apk`, cài trên Android.
+The run has artifact **PKHeX-Gen7-Expansion-Android-Debug** containing:
+- `org.pkhex.gen7expansion.mobile-Signed.apk` (the signed Debug APK to install)
+- `org.pkhex.gen7expansion.mobile.apk` (unsigned build product; prefer the Signed APK)
 
-## Mã nguồn
+Open the successful run -> **Artifacts** -> download artifact ZIP -> extract `org.pkhex.gen7expansion.mobile-Signed.apk` -> install on Android (enable “Install unknown apps” for your file browser if required). Sign-in to GitHub might be required to download Actions artifacts.
 
-Bản nguồn được đưa vào tệp `source-bundle.txz`; GitHub Actions giải nén gói này, tải Aqua-0 v1.0 và thử biên dịch. Sau khi build chạy, workflow cũng cố gắng đưa các file mã nguồn đã giải nén vào repository để tiện tham khảo và chỉnh sửa.
+**Status:** Compiled and APK archive integrity checked; **not yet tested on a real Android phone, with Azahar, or with actual expansion save files**.
 
-- Giao diện tham khảo: https://github.com/kwsch/PKHeX.Mobile
-- Engine mở rộng: https://github.com/Aqua-0/PKHeX/releases/tag/v1.0
-- GPLv3: giấy phép gốc được sao chép từ Aqua-0 khi setup.
+## Source and build
 
-**Giới hạn prototype:** chưa tương đương toàn bộ PKHeX.Mobile gốc; sprite, Inventory, Mystery Gift, QR và vài module khác chưa được chuyển. Chưa kiểm thử trên save thật.
+Due to API upload limitations, the complete source is committed as a compressed XZ archive encoded in four numbered base64 files under `source-bundle/`. Each GitHub Actions run:
+1. Concatenates `part-01.txt` through `part-04.txt`, decodes the archive, verifies SHA-256, extracts the MAUI project.
+2. Checks out `Aqua-0/PKHeX` **v1.0** as the PKHeX.Core reference.
+3. Applies .NET MAUI compatibility corrections found from the first compile (FlexLayout namespace, integer overload, logging provider, MAUI controls package).
+4. Compiles the Android Debug APK and uploads it as an artifact.
 
-Khi build thất bại, xem logs tại Actions và sửa nguyên nhân thay vì cài file chưa kiểm chứng.
+The source bundle SHA-256 after decoding: `f0b3ac5c648d056d6651cbc96e0cb90a3baf8847c903b581176fcdc4f68e74f7`.
+
+Source directories after unpacking:
+- `PKHeXExpansion.Mobile/Pages` — HomePage, Pokémon Editor, ID picker.
+- `PKHeXExpansion.Mobile/Services` — SaveWorkspace, ExpansionCatalog.
+- `PKHeXExpansion.Mobile/Controls` and `Platforms/Android`.
+- `setup.ps1` and `build-android.ps1`.
+
+The initial version is a **prototype rather than a 1:1 port**: sprites, QR support, advanced inventory, Mystery Gift, cross-generation transfers, and some other legacy features have not been implemented. It can potentially contain bugs in save export, UI, legality, or PK7 import/export.
+
+## Important safety guidance
+
+1. Always back up the original `main` save file outside the app.
+2. Test on a **copy** of a decrypted Ultra Sun / Ultra Moon Expansion save.
+3. Do not overwrite your only copy: export and re-open a test save first.
+4. The app does **not** directly replace Azahar save data; you must import the exported file yourself.
+5. Never assume the legality status of custom Expansion Pokémon has been fully validated.
+
+## Sources and license
+
+- https://github.com/kwsch/PKHeX.Mobile
+- https://github.com/Aqua-0/PKHeX/releases/tag/v1.0
+
+PKHeX and its modifications are GPL-3.0-or-later. Not an official release of either original project.
