@@ -1,3 +1,28 @@
+# PKHeX Gen7 Expansion Mobile v0.4.0 — PKHaX Settings
+
+**Download the tested signed Android APK (ZIP artifact):**
+
+https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42367509587/artifacts/13571974623
+
+Open the link (sign in to GitHub if needed), download the ZIP, extract `PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk`, and install it.
+
+**Changes in v0.4.0**
+- Settings → PKHeX Settings → **PKHaX Mode** toggle (off by default, persists).
+- When enabled: unfiltered choices for species, moves, held items, and abilities within the save's supported IDs. Ability picker supports custom Gen7 Expansion abilities.
+- When disabled: normal filtered choices return. This does **not** revert previously saved illegal changes.
+- Disabled the original PKHeX.MAUI update checker, which was incorrectly prompting this expansion fork to update to upstream versions.
+- Kept the original PKHeX.MAUI interface, Box/Party screens, editor tabs, and packaged Pokémon/Shiny sprites.
+
+**Validation:** GitHub Actions run [42367509587](https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42367509587) passed the full .NET MAUI build, signing verification and Android 15 emulator startup test. No on-device Xiaomi 14 save-editing regression test has been performed.
+
+**Install note:** This signed APK uses a new temporary Debug signing key. If Android reports a package-signature mismatch, back up any app-local data, uninstall the previous *Expansion fork* (`org.pkhex.gen7expansion.maui`) and install v0.4.0. Keep the original PKHeX.MAUI separately if desired.
+
+**Save safety:** Test on a copy of your decrypted `main` and keep the original backup. PKHaX permits intentionally illegal data; game acceptance is not guaranteed.
+
+**Implementation:** [patch script](scripts/patch-pkhax-updates.py) | [integration script](scripts/prepare-pkhex-maui.ps1) | [build workflow](.github/workflows/android-maui-expansion.yml).
+
+---
+
 # PKHeX Gen7 Expansion Mobile — PKHeX.MAUI Original Interface
 
 ## ✅ APK with original PKHeX.MAUI UI, sprites, and Gen7 Expansion core
