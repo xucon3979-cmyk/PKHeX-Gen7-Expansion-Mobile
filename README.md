@@ -2,17 +2,23 @@
 
 An unofficial prototype using **Aqua-0/PKHeX tag v1.0 (Gen7 Expansion)** through a .NET 10 MAUI Android interface inspired by **kwsch/PKHeX.Mobile**.
 
-## ✅ Android Debug APK built successfully
+## ✅ Android standalone APK: Startup crash fixed and emulator tested
 
-**Verified successful GitHub Actions run:** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42356622710
+**Verified new successful GitHub Actions run (build + emulator startup test):** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42357732707
 
-The run has artifact **PKHeX-Gen7-Expansion-Android-Debug** containing:
+The fixed run has artifact **PKHeX-Gen7-Expansion-Android-Debug** containing:
 - `org.pkhex.gen7expansion.mobile-Signed.apk` (the signed Debug APK to install)
 - `org.pkhex.gen7expansion.mobile.apk` (unsigned build product; prefer the Signed APK)
 
 Open the successful run -> **Artifacts** -> download artifact ZIP -> extract `org.pkhex.gen7expansion.mobile-Signed.apk` -> install on Android (enable “Install unknown apps” for your file browser if required). Sign-in to GitHub might be required to download Actions artifacts.
 
-**Status:** Compiled and APK archive integrity checked; **not yet tested on a real Android phone, with Azahar, or with actual expansion save files**.
+**Status:** APK compiled, ZIP/APK integrity checked, and **installed + launched successfully on an Android 15 x86_64 emulator**. The app remained alive after 16 seconds with no fatal startup messages. **Not yet tested on a physical Xiaomi 14, with Azahar, or with actual expansion save files.**
+
+### Crash in first version (2026-11-07)
+The old Debug APK from run 42356622710 could install but immediately crash. The Android log identified the cause:
+`F monodroid: No assemblies found ... Assuming this is part of Fast Deployment. Exiting...`
+The build now uses `EmbedAssembliesIntoApk=true` and `AndroidUseSharedRuntime=false` so the APK contains `PKHeX.Core` and the app assemblies, and adds an emulator startup test.
+**Do not install the original 15 MB APK.** The fixed standalone APK is approximately 92 MB. As the Debug signing certificate may change between builds, uninstall the original app first; back up any app-local data before doing so.
 
 ## Source and build
 
@@ -20,7 +26,7 @@ Due to API upload limitations, the complete source is committed as a compressed 
 1. Concatenates `part-01.txt` through `part-04.txt`, decodes the archive, verifies SHA-256, extracts the MAUI project.
 2. Checks out `Aqua-0/PKHeX` **v1.0** as the PKHeX.Core reference.
 3. Applies .NET MAUI compatibility corrections found from the first compile (FlexLayout namespace, integer overload, logging provider, MAUI controls package).
-4. Compiles the Android Debug APK and uploads it as an artifact.
+4. Forces standalone Debug APK packaging with all .NET assemblies embedded.\n5. Compiles the Android Debug APK, uploads it, and smoke-tests launch on an Android emulator.
 
 The source bundle SHA-256 after decoding: `f0b3ac5c648d056d6651cbc96e0cb90a3baf8847c903b581176fcdc4f68e74f7`.
 
