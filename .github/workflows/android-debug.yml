@@ -9,38 +9,53 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout project
+      - name: Checkout source repository
         uses: actions/checkout@v4
-      - name: Extract source package (when ZIP is uploaded)
+      - name: Restore application source from verified bundle
         shell: pwsh
         run: |
-          if (Test-Path 'PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip') {
-            Expand-Archive -Path 'PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip' -DestinationPath '.source' -Force
-            Copy-Item -Path '.source/PKHeX-Gen7Expansion-Mobile/*' -Destination '.' -Recurse -Force
-          }
+          @'
+          import base64, hashlib, pathlib, tarfile
+          parts = pathlib.Path("source-bundle")
+          data = "".join((parts / f"part-{i:02d}.txt").read_text(encoding="utf-8").strip() for i in range(1,5))
+          raw = base64.b64decode(data, validate=True)
+          expected = "f0b3ac5c648d056d6651cbc96e0cb90a3baf8847c903b581176fcdc4f68e74f7"
+          actual = hashlib.sha256(raw).hexdigest()
+          if actual != expected: raise RuntimeError("Source bundle SHA256 mismatch: " + actual)
+          archive = pathlib.Path("application-source.txz")
+          archive.write_bytes(raw)
+          with tarfile.open(archive, "r:xz") as tar:
+              root = pathlib.Path(".").resolve()
+              for info in tar.getmembers():
+                  target = (root / info.name).resolve()
+                  if not target.is_relative_to(root): raise RuntimeError("Unsafe archive path")
+              tar.extractall(root, filter="data")
+          print("Source restored and SHA256 verified:", actual)
+          '@ | python -
           if (-not (Test-Path 'PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj')) {
-            throw 'Missing source: upload PKHeX-Gen7Expansion-Mobile-Source-v0.1.0.zip at repository root.'
+            throw 'Application project is missing after extraction.'
           }
-      - name: Get Aqua-0 PKHeX Core v1.0
+      - name: Checkout Aqua-0 PKHeX Expansion v1.0
         uses: actions/checkout@v4
         with:
           repository: Aqua-0/PKHeX
           ref: v1.0
           path: Upstream/PKHeX
           persist-credentials: false
-      - name: Set up .NET 10
+      - name: Install .NET SDK 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Install Android workload
+      - name: Restore Android workload
         shell: pwsh
         run: dotnet workload restore PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj
-      - name: Build APK
+      - name: Build Android Debug APK
         shell: pwsh
         run: dotnet build PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj -c Debug -f net10.0-android -p:AndroidPackageFormats=apk
-      - name: Upload APK
+      - name: Publish installable APK as artifact
         uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: PKHeX-Gen7-Expansion-Android-debug
+          name: PKHeX-Gen7-Expansion-Android-Debug
           path: PKHeXExpansion.Mobile/bin/Debug/net10.0-android/**/*.apk
           if-no-files-found: error
