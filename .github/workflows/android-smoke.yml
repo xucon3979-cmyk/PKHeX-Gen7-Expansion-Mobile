@@ -1,0 +1,60 @@
+name: Diagnose Android startup crash
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-smoke.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  startup-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Download last verified debug build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ./apk
+          gh run download 42356622710 -R ${{ github.repository }} -n PKHeX-Gen7-Expansion-Android-Debug -D ./apk
+          ls -lah ./apk
+
+      - name: Configure KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          ls -l /dev/kvm || true
+
+      - name: Boot emulator, launch app, inspect fatal errors
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install ./apk/org.pkhex.gen7expansion.mobile-Signed.apk
+            adb shell am force-stop org.pkhex.gen7expansion.mobile || true
+            adb logcat -c
+            adb shell monkey -p org.pkhex.gen7expansion.mobile -c android.intent.category.LAUNCHER 1
+            sleep 16
+            adb logcat -d -v threadtime > ./android-startup-logcat.txt
+            echo '=== Suspected errors ==='
+            grep -inE -m 200 'AndroidRuntime|FATAL EXCEPTION|mono-rt|PKHeXExpansion|[eE]xception|[cC]rash|NoClassDef|Fatal signal|libc.*Fatal' ./android-startup-logcat.txt | tail -150 || true
+            echo '=== App process ==='
+            adb shell pidof org.pkhex.gen7expansion.mobile || { echo 'PROCESS EXITED (startup crash)'; exit 1; }
+
+      - name: Upload full Android startup logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PKHeX-Android-Startup-Logcat
+          path: ./android-startup-logcat.txt
+          if-no-files-found: warn
