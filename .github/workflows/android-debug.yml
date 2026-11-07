@@ -35,6 +35,35 @@ jobs:
           if (-not (Test-Path 'PKHeXExpansion.Mobile/PKHeXExpansion.Mobile.csproj')) {
             throw 'Application project is missing after extraction.'
           }
+      - name: Fix .NET MAUI compilation compatibility
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          root = Path("PKHeXExpansion.Mobile")
+          program = root / "MauiProgram.cs"
+          s = program.read_text(encoding="utf-8")
+          s = s.replace("builder.Logging.AddDebug();", "// Logging provider is optional for Android Debug")
+          program.write_text(s, encoding="utf-8")
+
+          home = root / "Pages" / "HomePage.cs"
+          s = home.read_text(encoding="utf-8")
+          if "using Microsoft.Maui.Layouts;" not in s:
+              s = "using Microsoft.Maui.Layouts;\n" + s
+          home.write_text(s, encoding="utf-8")
+
+          editor = root / "Pages" / "PokemonEditorPage.cs"
+          s = editor.read_text(encoding="utf-8")
+          s = s.replace("Math.Max(1, _pk.CurrentLevel)", "Math.Max(1, (int)_pk.CurrentLevel)")
+          editor.write_text(s, encoding="utf-8")
+
+          project = root / "PKHeXExpansion.Mobile.csproj"
+          s = project.read_text(encoding="utf-8")
+          if 'PackageReference Include="Microsoft.Maui.Controls"' not in s:
+              s = s.replace("</Project>", '  <ItemGroup><PackageReference Include="Microsoft.Maui.Controls" Version="10.0.110" /></ItemGroup>\n</Project>')
+          project.write_text(s, encoding="utf-8")
+          print("Applied API fixes: logging, FlexLayout namespace, byte/int overload, MAUI package.")
+          '@ | python -
       - name: Checkout Aqua-0 PKHeX Expansion v1.0
         uses: actions/checkout@v4
         with:
