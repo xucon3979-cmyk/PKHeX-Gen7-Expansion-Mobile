@@ -1,0 +1,53 @@
+using PKHeX.Core;
+using System;
+using System.Collections.Generic;
+
+namespace PKHeXMAUI;
+
+/// <summary>
+/// Uses the original bundled PKHeX.MAUI sprites offline. Never requests
+/// nonexistent resource keys for a Pokémon form introduced by Gen7 Expansion.
+/// For custom sprites, add a_658_3.png or other form assets to the
+/// original Resources/Images/ExpansionForms folder before running the build.
+/// </summary>
+public static class ExpansionSprites
+{
+    private static readonly HashSet<string> Available = new(StringComparer.Ordinal)
+    {
+        // GENERATED_SPRITE_MANIFEST
+    };
+
+    public static string Editor(PKM pk)
+    {
+        if (pk.Species == 0) return "iconp.png";
+        if (pk.Form > 0)
+        {
+            var form = $"a_{pk.Species}_{pk.Form}.png";
+            if (Available.Contains(form)) return form;
+        }
+        var main = $"a_{pk.Species}.png";
+        return Available.Contains(main) ? main : "iconp.png";
+    }
+
+    public static string Box(PKM pk)
+    {
+        if (pk.Species == 0) return "";
+        if (pk.IsShiny)
+        {
+            var shinyForm = $"b_{pk.Species}_{pk.Form}s.png";
+            if (pk.Form > 0 && Available.Contains(shinyForm)) return shinyForm;
+            var shinyMain = $"b_{pk.Species}s.png";
+            if (Available.Contains(shinyMain)) return shinyMain;
+        }
+        if (pk.Form > 0)
+        {
+            var form = $"b_{pk.Species}_{pk.Form}.png";
+            if (Available.Contains(form)) return form;
+        }
+        var normal = $"b_{pk.Species}.png";
+        return Available.Contains(normal) ? normal : Editor(pk);
+    }
+
+    public static bool MissingExactFormArt(PKM pk)
+        => pk.Form > 0 && !Available.Contains($"a_{pk.Species}_{pk.Form}.png");
+}
