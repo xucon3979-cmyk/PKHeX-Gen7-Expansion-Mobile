@@ -8,6 +8,9 @@ on:
       - '.github/workflows/android-maui-expansion.yml'
       - 'scripts/prepare-pkhex-maui.ps1'
       - 'scripts/patch-pkhax-updates.py'
+      - 'scripts/patch-expansion-v07.py'
+      - 'patches/v0.7/**'
+      - 'tests/**'
 
 permissions:
   contents: read
@@ -40,6 +43,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Verify synthetic Gen7 Expansion save round-trip
+        shell: pwsh
+        run: dotnet run --project tests/Gen7RoundTrip.csproj --configuration Release
       - name: Restore Android workload
         shell: pwsh
         run: dotnet workload restore PKHeXMAUI/PKHeX.MAUI.csproj
@@ -69,8 +75,13 @@ jobs:
 
       - name: Sign standalone APK
         shell: bash
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_B64 }}
+          SIGNING_ALIAS: ${{ secrets.ANDROID_SIGNING_ALIAS }}
+          SIGNING_STOREPASS: ${{ secrets.ANDROID_SIGNING_STOREPASS }}
+          SIGNING_KEYPASS: ${{ secrets.ANDROID_SIGNING_KEYPASS }}
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           APKSIGNER="$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -1)"
           ZIPALIGN="$(find "$SDK/build-tools" -type f -name zipalign | sort -V | tail -1)"
@@ -79,16 +90,27 @@ jobs:
           test -f "$ZIPALIGN"
           test -f "$INPUT"
           "$ZIPALIGN" -p -f 4 "$INPUT" ./aligned.apk
-          keytool -genkeypair -noprompt -keystore ./ci-debug.keystore -alias androiddebugkey -storepass android -keypass android -dname "CN=PKHeX Gen7 Expansion PKHaX,O=Debug,C=US" -keyalg RSA -keysize 2048 -validity 10000
-          "$APKSIGNER" sign --ks ./ci-debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out ./PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk ./aligned.apk
-          "$APKSIGNER" verify --verbose ./PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk
-          sha256sum ./PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk
+          if [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            if [ -z "$SIGNING_ALIAS" ] || [ -z "$SIGNING_STOREPASS" ] || [ -z "$SIGNING_KEYPASS" ]; then
+              echo "::error::Configured signing keystore requires alias and password secrets."; exit 1
+            fi
+            printf "%s" "$SIGNING_KEYSTORE_B64" | base64 -d > ./signing.keystore
+            KEY_ALIAS="$SIGNING_ALIAS"; STOREPASS="$SIGNING_STOREPASS"; KEYPASS="$SIGNING_KEYPASS"
+            echo "Using configured persistent signing key."
+          else
+            echo "::warning::No private signing key secrets configured. Generated debug key will NOT support installing future versions over this build."
+            keytool -genkeypair -noprompt -keystore ./signing.keystore -alias androiddebugkey -storepass android -keypass android -dname "CN=PKHeX Gen7 Expansion Development,O=Debug,C=US" -keyalg RSA -keysize 2048 -validity 10000
+            KEY_ALIAS=androiddebugkey; STOREPASS=android; KEYPASS=android
+          fi
+          "$APKSIGNER" sign --ks ./signing.keystore --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STOREPASS" --key-pass "pass:$KEYPASS" --out ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk ./aligned.apk
+          "$APKSIGNER" verify --verbose ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
+          sha256sum ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
 
       - name: Upload signed APK for Android installation
         uses: actions/upload-artifact@v4
         with:
-          name: PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed-APK
-          path: ./PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk
+          name: PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed-APK
+          path: ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
           retention-days: 14
           if-no-files-found: error
 
@@ -107,18 +129,18 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            adb install ./PKHeX-MAUI-Gen7Expansion-PKHaX-v0.4.0-Signed.apk
+            adb install ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
             adb logcat -c
             adb shell monkey -p org.pkhex.gen7expansion.maui -c android.intent.category.LAUNCHER 1
             sleep 18
-            adb logcat -d -v threadtime > ./pkhex-maui-v0.4-startup.log
-            grep -iE -m 60 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-v0.4-startup.log || true
+            adb logcat -d -v threadtime > ./pkhex-maui-v0.7-startup.log
+            grep -iE -m 60 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-v0.7-startup.log || true
             adb shell pidof org.pkhex.gen7expansion.maui || { echo 'App process stopped'; exit 1; }
 
       - name: Upload startup diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PKHeX-MAUI-PKHaX-v0.4.0-Startup-Logs
-          path: ./pkhex-maui-v0.4-startup.log
+          name: PKHeX-MAUI-v0.7.0-Startup-Logs
+          path: ./pkhex-maui-v0.7-startup.log
           if-no-files-found: warn
