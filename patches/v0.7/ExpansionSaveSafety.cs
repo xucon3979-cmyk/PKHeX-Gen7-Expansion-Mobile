@@ -78,9 +78,11 @@ public static class ExpansionSaveSafety
             throw new InvalidDataException("Export is empty.");
         if (original is not SAV7USUM)
             return; // Original app validation applies to other generations.
-        var roundTrip = SaveUtil.GetSaveFile(bytes);
-        if (roundTrip is not SAV7USUM)
-            throw new InvalidDataException("Gen7 Expansion export cannot be read back.");
+        // Normal imported saves should be recognized automatically. Some valid saves
+        // (and synthetic templates) lack the metadata needed for auto-detection.
+        // If necessary, explicitly parse the known Gen7 save type and validate CRCs.
+        var roundTrip = SaveUtil.GetSaveFile(bytes) as SAV7USUM ??
+                        new SAV7USUM(bytes);
         if (!roundTrip.ChecksumsValid)
             throw new InvalidDataException("Export checksum error: " + roundTrip.ChecksumInfo);
         if (roundTrip.Data.Length != original.Data.Length)
