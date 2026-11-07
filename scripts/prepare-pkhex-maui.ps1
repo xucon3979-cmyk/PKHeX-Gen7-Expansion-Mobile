@@ -27,8 +27,8 @@ if (-not $text.Contains("<ApplicationId>org.pkhex.gen7expansion.maui</Applicatio
   <PropertyGroup>
     <ApplicationTitle>PKHeX Gen7 Expansion</ApplicationTitle>
     <ApplicationId>org.pkhex.gen7expansion.maui</ApplicationId>
-    <ApplicationDisplayVersion>0.4.0</ApplicationDisplayVersion>
-    <ApplicationVersion>4</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+    <ApplicationVersion>7</ApplicationVersion>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <AndroidPackageFormats>apk</AndroidPackageFormats>
@@ -43,3 +43,6 @@ Write-Host "Using full santacrab2 PKHeX.MAUI UI with Aqua-0 PKHeX.Core Expansion
 Write-Host "The original species, form, item and shiny sprite resources remain bundled."
 python (Join-Path $PSScriptRoot "patch-pkhax-updates.py") --root $MobileSource
 if ($LASTEXITCODE -ne 0) { throw "PKHaX and update-suppression patch failed" }
+python (Join-Path $PSScriptRoot "patch-expansion-v07.py") --root $MobileSource
+if ($LASTEXITCODE -ne 0) { throw "Expansion v0.7 Safe Save/sprites/diagnostics patches failed" }
+
