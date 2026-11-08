@@ -119,8 +119,8 @@ def patch_items(s):
 def patch_export(s):
     # Never retain an unverified candidate as a valid pre-export snapshot.
     s=replace_once(s,
-      '            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");\\n            ExpansionSaveSafety.VerifyExport(sav, payload);',
-      '            ExpansionSaveSafety.VerifyExport(sav, payload);\\n            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");',
+      '            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");\n            ExpansionSaveSafety.VerifyExport(sav, payload);',
+      '            ExpansionSaveSafety.VerifyExport(sav, payload);\n            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");',
       "Verify Gen7 export BEFORE creating candidate backup")
     return s
 
