@@ -9,6 +9,8 @@ on:
       - 'scripts/prepare-pkhex-maui.ps1'
       - 'scripts/patch-pkhax-updates.py'
       - 'scripts/patch-expansion-v07.py'
+      - 'scripts/patch-save-hotfix-v08.py'
+      - 'patches/v0.8/**'
       - 'patches/v0.7/**'
       - 'tests/**'
 
@@ -102,15 +104,15 @@ jobs:
             keytool -genkeypair -noprompt -keystore ./signing.keystore -alias androiddebugkey -storepass android -keypass android -dname "CN=PKHeX Gen7 Expansion Development,O=Debug,C=US" -keyalg RSA -keysize 2048 -validity 10000
             KEY_ALIAS=androiddebugkey; STOREPASS=android; KEYPASS=android
           fi
-          "$APKSIGNER" sign --ks ./signing.keystore --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STOREPASS" --key-pass "pass:$KEYPASS" --out ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk ./aligned.apk
-          "$APKSIGNER" verify --verbose ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
-          sha256sum ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
+          "$APKSIGNER" sign --ks ./signing.keystore --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STOREPASS" --key-pass "pass:$KEYPASS" --out ./PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed.apk ./aligned.apk
+          "$APKSIGNER" verify --verbose ./PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed.apk
+          sha256sum ./PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed.apk
 
       - name: Upload signed APK for Android installation
         uses: actions/upload-artifact@v4
         with:
-          name: PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed-APK
-          path: ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
+          name: PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed-APK
+          path: ./PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed.apk
           retention-days: 14
           if-no-files-found: error
 
@@ -129,18 +131,18 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            adb install ./PKHeX-MAUI-Gen7Expansion-v0.7.0-Signed.apk
+            adb install ./PKHeX-MAUI-Gen7Expansion-v0.8.0-Signed.apk
             adb logcat -c
             adb shell monkey -p org.pkhex.gen7expansion.maui -c android.intent.category.LAUNCHER 1
             sleep 18
-            adb logcat -d -v threadtime > ./pkhex-maui-v0.7-startup.log
-            grep -iE -m 60 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-v0.7-startup.log || true
+            adb logcat -d -v threadtime > ./pkhex-maui-v0.8-startup.log
+            grep -iE -m 60 'FATAL EXCEPTION|No assemblies found|F monodroid|Fatal signal' ./pkhex-maui-v0.8-startup.log || true
             adb shell pidof org.pkhex.gen7expansion.maui || { echo 'App process stopped'; exit 1; }
 
       - name: Upload startup diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PKHeX-MAUI-v0.7.0-Startup-Logs
-          path: ./pkhex-maui-v0.7-startup.log
+          name: PKHeX-MAUI-v0.8.0-Startup-Logs
+          path: ./pkhex-maui-v0.8-startup.log
           if-no-files-found: warn
