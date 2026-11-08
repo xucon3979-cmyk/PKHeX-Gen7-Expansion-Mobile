@@ -116,6 +116,14 @@ def patch_items(s):
         "Prevent inventory buffer overrun")
     return s
 
+def patch_export(s):
+    # Never retain an unverified candidate as a valid pre-export snapshot.
+    s=replace_once(s,
+      '            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");\\n            ExpansionSaveSafety.VerifyExport(sav, payload);',
+      '            ExpansionSaveSafety.VerifyExport(sav, payload);\\n            ExpansionSaveSafety.Backup(payload, sav.Metadata.FileName ?? "main", "Pre-export");',
+      "Verify Gen7 export BEFORE creating candidate backup")
+    return s
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--root",type=Path,default=Path("PKHeXMAUI"))
@@ -125,6 +133,7 @@ def main():
     shutil.copyfile("patches/v0.8/ExpansionSaveSafety.cs",dest)
     patch_file(root/"pktabs/PKTab.xaml.cs",patch_picker)
     patch_file(root/"SaveEditors/Items.xaml.cs",patch_items)
+    patch_file(root/"AppShell.xaml.cs",patch_export)
     print("v0.8: isolated import+export byte arrays; protected Gen7 signature and inventory.")
 
 if __name__=="__main__":
