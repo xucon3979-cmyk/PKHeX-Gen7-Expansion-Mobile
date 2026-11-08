@@ -64,7 +64,12 @@ public static class ExpansionSaveSafety
         if (!full.StartsWith(safeFolder, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Invalid recovery path.");
         byte[] bytes = File.ReadAllBytes(full);
-        SaveFile? restored = SaveUtil.GetSaveFile(bytes);
+        // Old 0.7.0 backups may have been captured AFTER the PKHeX parser
+        // erased the signature. Do not silently restore a damaged backup.
+        if (bytes.Length == SaveUtil.SIZE_G7USUM)
+            VerifyGen7Signature(bytes);
+        // A save parser alters its backing byte[]; never parse the raw backup.
+        SaveFile? restored = SaveUtil.GetSaveFile((byte[])bytes.Clone());
         if (restored is null)
             throw new InvalidDataException("This backup cannot be decoded as a game save.");
         if (restored is SAV7USUM && !restored.ChecksumsValid)
