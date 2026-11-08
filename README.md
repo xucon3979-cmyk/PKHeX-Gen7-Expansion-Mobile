@@ -1,3 +1,13 @@
+# Critical: v0.7.0 Gen7 save export corruption
+
+**DO NOT use v0.7.0 to export Pokémon Ultra Sun/Ultra Moon saves.** A confirmed bug in the v0.7.0 verification step passed the signed output buffer directly into `SAV7USUM`, whose constructor erases the MemeCrypto signature *in place*. The exported `main` can then be rejected by the game.
+
+A **v0.8.0 hotfix** is in development and includes a regression test for preserving the signed save, an independent RSA/checksum-table verification and safer Shiny Charm inventory constraints. Refer to [save hotfix details](docs/v0.8-save-corruption-hotfix.md). **Only install the hotfix after the build and Android smoke-test are green**.
+
+Keep your original, game-working `main` separately. Do not overwrite it with a v0.7.0 export.
+
+---
+
 # PKHeX.MAUI Gen7 Expansion v0.7.0 — Full UI, Expansion, Safe Save, Android
 
 **Latest signed APK (ZIP artifact):** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42372147818/artifacts/13574186955
