@@ -1,3 +1,19 @@
+# PKHeX Gen7 Expansion Mobile v0.8.0 — SAVE CORRUPTION FIX
+
+**Tested signed APK (ZIP artifact):** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42441363730/artifacts/13602121541
+
+**Verified GitHub Actions run:** https://github.com/xucon3979-cmyk/PKHeX-Gen7-Expansion-Mobile/actions/runs/42441363730 — synthetic save signature, Shiny Charm, item and Pokémon data checks passed; APK compiled, signed and opened on Android 15 emulator.
+
+**IMPORTANT:** Previous v0.7.0 exports can be corrupted. v0.8.0 fixes a confirmed in-place signature-clearing issue in Gen7 SaveUtil validation. The user's healthy game save was **not uploaded** to GitHub. No test on the user's live Ultra Sun Expansion save or Xiaomi 14 has been completed. Do not overwrite your last working `main`; test the candidate on a separate copy first.
+
+**New fixes:** independent copies for import/export parsers; RSA MemeCrypto signature verification including SHA256 checksum table; safe backup created only after export verification; safer Key Items and Shiny Charm handling; disable USUM bulk Give All / Modify All. Existing PKHeX.MAUI UI, sprites and PKHaX are preserved.
+
+[Read technical root cause and release cautions](docs/v0.8-save-corruption-hotfix.md).
+
+**Signing caveat:** GitHub repository signing secrets are not set, so the ZIP contains an APK signed with a temporary Debug certificate. Android may require uninstalling your previous fork before installing, which deletes app-private backups. **Save your good `main` externally first.**
+
+---
+
 # Critical: v0.7.0 Gen7 save export corruption
 
 **DO NOT use v0.7.0 to export Pokémon Ultra Sun/Ultra Moon saves.** A confirmed bug in the v0.7.0 verification step passed the signed output buffer directly into `SAV7USUM`, whose constructor erases the MemeCrypto signature *in place*. The exported `main` can then be rejected by the game.
